@@ -1,0 +1,183 @@
+menu "WIFI Manager"
+
+    config WIFIMGR_DEFAULT_AP_CHANNEL
+    int "Default channel number for AP mode"
+    range 1 13
+    default 11
+    help
+        Channel number when wifi manager start AP mode and before channel scan for best channel
+        in case of autochannel enabled
+
+    config WIFIMGR_AP_CHANNEL
+    int "Work channel number in AP mode"
+    range 0 13
+    default 0
+    help 
+        Working channel number for AP mode. When set working channel to 0, autochannel configuration
+        is enabled and Wifi Manager will scan for best channel to create AP.
+        
+    config WIFIMGR_MAX_STA_RETRY
+    int "Max recoonect attepmts to station before fallback to AP mode"
+    range 1 5
+    default 3
+    help
+        How may times to try to reconnect to Access point with known network SSID
+
+    config WIFIMGR_AP_SSID
+    string "AP mode SSID"
+    default "WIFIMGR_AP_SSID"
+    help
+        Default SSID for AP mode
+    
+    config WIFIMGR_AP_PWD
+    string "AP mode password"
+    default ""
+    help
+        Default password for mode
+    
+    choice  WIFIMGR_COUNTRY_CODE
+        prompt "WiFi country code"
+        default WIFIMGR_COUNTRY_CODE_BG
+        help
+            WiFi driver country code
+
+        config WIFIMGR_COUNTRY_CODE_01
+            bool "01"
+        config WIFIMGR_COUNTRY_CODE_AT
+            bool "AT"
+        config WIFIMGR_COUNTRY_CODE_AU
+            bool "AU"
+        config WIFIMGR_COUNTRY_CODE_BE
+            bool "BE"
+        config WIFIMGR_COUNTRY_CODE_BG
+            bool "BG"
+        config WIFIMGR_COUNTRY_CODE_BR
+            bool "BR"
+        config WIFIMGR_COUNTRY_CODE_CA
+            bool "CA"
+        config WIFIMGR_COUNTRY_CODE_CH
+            bool "CH"
+        config WIFIMGR_COUNTRY_CODE_CN
+            bool "CN"
+        config WIFIMGR_COUNTRY_CODE_CY
+            bool "CY"
+        config WIFIMGR_COUNTRY_CODE_CZ
+            bool "CZ"
+        config WIFIMGR_COUNTRY_CODE_DE
+            bool "DE"
+        config WIFIMGR_COUNTRY_CODE_DK
+            bool "DK"
+        config WIFIMGR_COUNTRY_CODE_EE
+            bool "EE"
+        config WIFIMGR_COUNTRY_CODE_ES
+            bool "ES"
+        config WIFIMGR_COUNTRY_CODE_FI
+            bool "FI"
+        config WIFIMGR_COUNTRY_CODE_FR
+            bool "FR"
+        config WIFIMGR_COUNTRY_CODE_GB
+            bool "GB"
+        config WIFIMGR_COUNTRY_CODE_GR
+            bool "GR"
+        config WIFIMGR_COUNTRY_CODE_HK
+            bool "HK"
+        config WIFIMGR_COUNTRY_CODE_HR
+            bool "HR"
+        config WIFIMGR_COUNTRY_CODE_HU
+            bool "HU"
+        config WIFIMGR_COUNTRY_CODE_IE
+            bool "IE"
+        config WIFIMGR_COUNTRY_CODE_IN
+            bool "IN"
+        config WIFIMGR_COUNTRY_CODE_IS
+            bool "IS"
+        config WIFIMGR_COUNTRY_CODE_IT
+            bool "IT"
+        config WIFIMGR_COUNTRY_CODE_JP
+            bool "JP"
+        config WIFIMGR_COUNTRY_CODE_KR
+            bool "KR"
+        config WIFIMGR_COUNTRY_CODE_LI
+            bool "LI"
+        config WIFIMGR_COUNTRY_CODE_LT
+            bool "LT"
+        config WIFIMGR_COUNTRY_CODE_LU
+            bool "LU"
+        config WIFIMGR_COUNTRY_CODE_LV
+            bool "LV"
+        config WIFIMGR_COUNTRY_CODE_MT
+            bool "MT"
+        config WIFIMGR_COUNTRY_CODE_MX
+            bool "MX"
+        config WIFIMGR_COUNTRY_CODE_NL
+            bool "NL"
+        config WIFIMGR_COUNTRY_CODE_NO
+            bool "NO"
+        config WIFIMGR_COUNTRY_CODE_NZ
+            bool "NZ"
+        config WIFIMGR_COUNTRY_CODE_PL
+            bool "PL"
+        config WIFIMGR_COUNTRY_CODE_PT
+            bool "PT"
+        config WIFIMGR_COUNTRY_CODE_RO
+            bool "RO"
+        config WIFIMGR_COUNTRY_CODE_SE
+            bool "SE"
+        config WIFIMGR_COUNTRY_CODE_SI
+            bool "SI"
+        config WIFIMGR_COUNTRY_CODE_SK
+            bool "SK"
+        config WIFIMGR_COUNTRY_CODE_TW
+            bool "TW"
+        config WIFIMGR_COUNTRY_CODE_US
+            bool "US"               
+    endchoice 
+    
+    config WIFIMGR_COUNTRY_CODE
+        string
+        default "01" if WIFIMGR_COUNTRY_CODE_01
+        default "AT" if WIFIMGR_COUNTRY_CODE_AT
+        default "AU" if WIFIMGR_COUNTRY_CODE_AU
+        default "BE" if WIFIMGR_COUNTRY_CODE_BE
+        default "BG" if WIFIMGR_COUNTRY_CODE_BG
+        default "BR" if WIFIMGR_COUNTRY_CODE_BR
+        default "CA" if WIFIMGR_COUNTRY_CODE_CA
+        default "CH" if WIFIMGR_COUNTRY_CODE_CH
+        default "CN" if WIFIMGR_COUNTRY_CODE_CN
+        default "CY" if WIFIMGR_COUNTRY_CODE_CY
+        default "CZ" if WIFIMGR_COUNTRY_CODE_CZ
+        default "DE" if WIFIMGR_COUNTRY_CODE_DE
+        default "DK" if WIFIMGR_COUNTRY_CODE_DK
+        default "EE" if WIFIMGR_COUNTRY_CODE_EE
+        default "ES" if WIFIMGR_COUNTRY_CODE_ES
+        default "FI" if WIFIMGR_COUNTRY_CODE_FI
+        default "FR" if WIFIMGR_COUNTRY_CODE_FR
+        default "GB" if WIFIMGR_COUNTRY_CODE_GB
+        default "GR" if WIFIMGR_COUNTRY_CODE_GR
+        default "HK" if WIFIMGR_COUNTRY_CODE_HK
+        default "HR" if WIFIMGR_COUNTRY_CODE_HR
+        default "HU" if WIFIMGR_COUNTRY_CODE_HU
+        default "IE" if WIFIMGR_COUNTRY_CODE_IE
+        default "IN" if WIFIMGR_COUNTRY_CODE_IN
+        default "IS" if WIFIMGR_COUNTRY_CODE_IS
+        default "IT" if WIFIMGR_COUNTRY_CODE_IT
+        default "JP" if WIFIMGR_COUNTRY_CODE_JP
+        default "KR" if WIFIMGR_COUNTRY_CODE_KR
+        default "LI" if WIFIMGR_COUNTRY_CODE_LI
+        default "LT" if WIFIMGR_COUNTRY_CODE_LT
+        default "LU" if WIFIMGR_COUNTRY_CODE_LU
+        default "LV" if WIFIMGR_COUNTRY_CODE_LV
+        default "MT" if WIFIMGR_COUNTRY_CODE_MT
+        default "MX" if WIFIMGR_COUNTRY_CODE_MX
+        default "NL" if WIFIMGR_COUNTRY_CODE_NL
+        default "NO" if WIFIMGR_COUNTRY_CODE_NO
+        default "NZ" if WIFIMGR_COUNTRY_CODE_NZ
+        default "PL" if WIFIMGR_COUNTRY_CODE_PL
+        default "PT" if WIFIMGR_COUNTRY_CODE_PT
+        default "RO" if WIFIMGR_COUNTRY_CODE_RO
+        default "SE" if WIFIMGR_COUNTRY_CODE_SE
+        default "SI" if WIFIMGR_COUNTRY_CODE_SI
+        default "SK" if WIFIMGR_COUNTRY_CODE_SK
+        default "TW" if WIFIMGR_COUNTRY_CODE_TW
+        default "US" if WIFIMGR_COUNTRY_CODE_US
+endmenu
