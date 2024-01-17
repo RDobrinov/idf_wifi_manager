@@ -54,12 +54,12 @@ void wm_set_ap_primary_dns(esp_ip4_addr_t dns_ip);
 void wm_set_sta_dns_by_id(esp_ip4_addr_t dns_ip, uint32_t known_network_id);
 void wm_set_sta_dns_by_ssid(esp_ip4_addr_t dns_ip, char *ssid);
 void wm_set_secondary_dns(esp_ip4_addr_t dns_ip);
-void wm_get_known_networks(wm_wifi_base_config_t *net_list);
-void wm_get_ap_config(wm_wifi_base_config_t *net_list);
+wm_known_net_config_t *wm_get_known_networks(size_t *size);
+void wm_get_ap_config(wm_net_base_config_t *ap_conf);
 
-esp_err_t wm_set_interface_ip( wifi_interface_t iface, esp_netif_ip_info_t *ip_info);   // *** Move to static 
+esp_err_t wm_set_interface_ip( wifi_interface_t iface, wm_net_ip_config_t *ip_info);   // *** Move to static 
 //esp_err_t wm_init_wifi_manager( wm_wifi_connection_data_t *pInitConfig, esp_event_loop_handle_t *p_uevent_loop);
-void wm_add_known_network_config( wm_wifi_base_config_t *known_network );
+esp_err_t wm_add_known_network_config( wm_wifi_base_config_t *known_network);
 esp_err_t wm_add_known_network( char *ssid, char *pwd );
 esp_err_t wm_del_known_net_by_id( uint32_t known_network_id );
 esp_err_t wm_del_known_net_by_ssid( char *ssid );
