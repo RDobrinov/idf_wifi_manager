@@ -18,7 +18,9 @@
 #include "freertos/event_groups.h"
 /**/
 
-#define WIFIMGR_MAX_KNOWN_AP 5
+#define MACSTR "%X:%X:%X:%X:%X:%X"
+#define MAC2STR(macaddr)    ((uint8_t)macaddr[0]), ((uint8_t)macaddr[1]), ((uint8_t)macaddr[2]), \
+                            ((uint8_t)macaddr[3]), ((uint8_t)macaddr[4]), ((uint8_t)macaddr[5]) 
 
 typedef enum {
     WM_EVENT_AP_START,
@@ -71,7 +73,15 @@ esp_err_t wm_del_known_net_by_id( uint32_t known_network_id );
 esp_err_t wm_del_known_net_by_ssid( char *ssid );
 esp_err_t wm_set_country(char *cc); //or char (*cc)[3]
 
+uint8_t wm_netmask_to_cidr(uint32_t nm);
+
+
 uint32_t wm_get_config_id(char *ssid);
+
+/**
+ * For test Only
+*/
+void wifimgr_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
 
 
 #endif /* _WIFI_MANAGER_H_ */

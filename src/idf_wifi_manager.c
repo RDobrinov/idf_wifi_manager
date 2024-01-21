@@ -87,11 +87,23 @@ void test() {
     
 }
 
+uint8_t wm_netmask_to_cidr(uint32_t nm)
+{
+    nm = nm - ((nm >> 1) & ((u32_t)0x55555555UL));
+    nm = (nm & ((u32_t)0x33333333UL)) + ((nm >> 2) & ((u32_t)0x33333333UL));
+    nm = (nm + (nm >> 4)) & ((u32_t)0x0F0F0F0FUL);
+    nm = nm + (nm >> 8);
+    nm = nm + (nm >> 16);
+    return (uint8_t)( nm & ((u32_t)0x0000003FUL));
+}
+
 static void vScanTask(void *pvParameters)
 {
+    static char *tag = "vScanTask";
     wifi_mode_t wifi_run_mode = WIFI_MODE_MAX;
     TickType_t xDelayTicks = (2500 / portTICK_PERIOD_MS);
     while(true) {
+        //ESP_LOGW(tag, "Scanning");
         if(esp_wifi_get_mode(&wifi_run_mode) == ESP_OK) {
             //if((wifi_run_mode == WIFI_MODE_APSTA) || ((wifi_run_mode == WIFI_MODE_STA) && (!(xEventGroupGetBits(wm_run_conf->event.group) & WIFIMGR_CONNECTED_BIT)))) {    
             if((wifi_run_mode == WIFI_MODE_APSTA) || ((wifi_run_mode == WIFI_MODE_STA) && (wm_run_conf->sta_connected))) {    
@@ -99,7 +111,7 @@ static void vScanTask(void *pvParameters)
                 if ( !(wm_run_conf->sta_connecting) && (wm_run_conf->scanning) && (wm_run_conf->known_networks_head)) {
                     //xEventGroupClearBits(wm_run_conf->event.group, WIFIMGR_SCAN_BIT);
                     wm_run_conf->scanning = 1;
-                    esp_wifi_scan_start(NULL, false);
+                    if(ESP_OK != esp_wifi_scan_start(NULL, false)) ESP_LOGE(tag, "Scan Error");
                     xDelayTicks = (2500 / portTICK_PERIOD_MS);
                 }
             } else { xDelayTicks = (1000 / portTICK_PERIOD_MS); } //Timeout 1 second or maybe greater???
@@ -110,8 +122,10 @@ static void vScanTask(void *pvParameters)
 
 static void vConnectTask(void *pvParameters) { // Celiqt shiban task e izlishen
     //esp_err_t err;
+    static char *tag = "vConnectTask";
     while(1) {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        ESP_LOGW(tag, "Notify");
         //if(!(xEventGroupGetBits(wm_config->event.group) & WIFIMGR_CONNECTING_BIT)) {
         if(!wm_run_conf->sta_connecting && strlen((char *)wm_run_conf->found_known_ap.ssid)) {
             wm_ll_known_network_node_t *net_conf = wm_find_known_net_by_ssid((char *)wm_run_conf->found_known_ap.ssid);
@@ -152,11 +166,12 @@ static void wm_wifi_event_handler(void* arg, esp_event_base_t event_base, int32_
 
     if (event_base == WIFI_EVENT) {
         if(event_id == WIFI_EVENT_SCAN_DONE) {
-            //ESP_LOGW(ftag, "WIFI_EVENT_SCAN_DONE");
+            ESP_LOGW(ftag, "WIFI_EVENT_SCAN_DONE %lu %u %u ", ((wifi_event_sta_scan_done_t *)event_data)->status, ((wifi_event_sta_scan_done_t *)event_data)->number, ((wifi_event_sta_scan_done_t *)event_data)->scan_id);
             if(((wifi_event_sta_scan_done_t *)event_data)->status == 0) {
                 uint16_t found_ap_count = 0;
                 wm_airband_rank_t airband;
                 esp_wifi_scan_get_ap_num(&found_ap_count);
+                ESP_LOGW(ftag, "Found AP %d", found_ap_count);
                 wifi_ap_record_t *found_ap_info = (wifi_ap_record_t *)calloc(found_ap_count, sizeof(wifi_ap_record_t));
                 esp_wifi_scan_get_ap_records(&found_ap_count, found_ap_info);
                 memset(&(wm_run_conf->found_known_ap), 0, sizeof(wifi_ap_record_t));
@@ -624,7 +639,7 @@ esp_err_t wm_init_wifi_manager( wm_apmode_config_t *full_ap_cfg, esp_event_loop_
         err = esp_wifi_set_mode(WIFI_MODE_APSTA);
         if(err != ESP_OK) {
             wm_clear_pointers();
-            //ESP_LOGE(ftag, "esp_wifi_set_mode (%s)", esp_err_to_name(err));
+            ESP_LOGE(ftag, "esp_wifi_set_mode (%s)", esp_err_to_name(err));
             return err;    
         };
 
@@ -810,3 +825,66 @@ static wm_ll_known_network_node_t *wm_find_known_net_by_id( uint32_t known_netwo
     }
     return work;
 }
+
+/**
+ * For test Only!
+*/
+
+void wifimgr_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
+    //static char *wm = "wm";
+    if(WM_EVENT ==  event_base ){
+        if( event_id == WM_EVENT_NETIF_GOT_IP ) {
+            /*ESP_LOGI("main", "WM_EVENT_NETIF_GOT_IP");
+            esp_netif_t *test_netif=esp_netif_get_default_netif();
+            if(test_netif == NULL) {
+                ESP_LOGE("probe:netif", "No active netif");
+            } else {
+                ESP_LOGE("probe:ifkey", "%s", esp_netif_get_ifkey(test_netif));
+            }*/
+            ESP_LOGI("WM_EVENT_NETIF_GOT_IP", IPSTR "/%u " IPSTR, IP2STR(&((esp_netif_ip_info_t *)event_data)->ip), wm_netmask_to_cidr(((esp_netif_ip_info_t *)event_data)->netmask.addr), IP2STR(&((esp_netif_ip_info_t *)event_data)->gw));
+        }
+        if(event_id == WM_EVENT_STA_CONNECT ) {
+            ESP_LOGI("WM_EVENT_STA_CONNECT", "[%s | " MACSTR "] RSSI: %d on %u channel" , ((wifi_ap_record_t *)event_data)->ssid, MAC2STR(((wifi_ap_record_t *)event_data)->bssid), ((wifi_ap_record_t *)event_data)->rssi, ((wifi_ap_record_t *)event_data)->primary);
+        }
+        if(event_id == WM_EVENT_STA_DISCONNECT ) {
+            ESP_LOGI("WM_EVENT_STA_DISCONNECT", "");
+        }
+        if(event_id == WM_EVENT_AP_START ) {
+            //ESP_LOGI(wm, "WM_EVENT_AP_START");
+            wm_net_base_config_t *ap_conf = (wm_net_base_config_t *)malloc(sizeof(wm_net_base_config_t));
+            wm_get_ap_config(ap_conf);
+            ESP_LOGI("WM_EVENT_AP_START", "SSID %s / PWD %s", ap_conf->ssid, ap_conf->password);
+        }
+        if(event_id == WM_EVENT_AP_STOP ) {
+            ESP_LOGI("WM_EVENT_AP_STOP", "");
+        }
+    }
+}
+
+/*
+#include <stdio.h>
+#include "idf_gpio_driver.h"
+#include "idf_wifi_manager.h"
+#include "esp_log.h"
+
+#define UNUSED(x) (void)x;
+
+void app_main(void)
+{
+    esp_event_loop_handle_t *uevent_loop = (esp_event_loop_handle_t *)malloc(sizeof(esp_event_loop_handle_t));
+    esp_event_loop_args_t uevent_args = {
+        .queue_size = 5,
+        .task_name = "uevloop",
+        .task_priority = 15,
+        .task_stack_size = 3072,
+        .task_core_id = tskNO_AFFINITY
+    };
+    esp_err_t err;
+    err = esp_event_loop_create(&uevent_args, uevent_loop);
+    (void)err;
+    esp_event_handler_instance_register_with(*uevent_loop, WM_EVENT, ESP_EVENT_ANY_ID, wifimgr_event_handler, NULL, NULL);
+
+    wm_init_wifi_manager(NULL, uevent_loop);
+    wm_add_known_network("Apt.16 Guest", "1234567890");
+}
+*/
