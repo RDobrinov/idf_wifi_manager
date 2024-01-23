@@ -7,6 +7,15 @@ menu "WIFI Manager"
         help
             Maximum known networks for STA mode. 
 
+    config WIFIMGR_AP_CHANNEL
+    int "Work channel number in AP mode"
+    range 0 13
+    default 0
+    help 
+        Working channel number for AP mode. When set working channel to 0, autochannel configuration
+        is enabled and Wifi Manager will scan for best channel to create AP.
+        
+
     config WIFIMGR_DEFAULT_AP_CHANNEL
     int "Default channel number for AP mode"
     range 1 13
@@ -15,14 +24,6 @@ menu "WIFI Manager"
         Channel number when wifi manager start AP mode and before channel scan for best channel
         in case of autochannel enabled
 
-    config WIFIMGR_AP_CHANNEL
-    int "Work channel number in AP mode"
-    range 0 13
-    default 0
-    help 
-        Working channel number for AP mode. When set working channel to 0, autochannel configuration
-        is enabled and Wifi Manager will scan for best channel to create AP.
-     
     config WIFIMGR_RUN_SNTP_WHEN_STA
         bool "Start SNTP client when STA connected"
         default y
