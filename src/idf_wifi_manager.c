@@ -23,15 +23,20 @@ typedef struct wm_ll_known_network_node {
     struct wm_ll_known_network_node *next;
 } wm_ll_known_network_node_t;
 
+typedef struct wm_ll_blacklist_node {
+    uint8_t bssid[6];
+    uint32_t net_config_id;
+    struct wm_ll_blacklist_node *next;
+} wm_ll_blacklist_node_t;
+
 typedef struct wm_wifi_mgr_config {
     wm_ll_known_network_node_t *known_networks_head;
-    //wm_ll_known_network_node_t *known_networks_tail;
+    wm_ll_blacklist_node_t *blacklist_head;
     wm_net_base_config_t ap_conf;
     wifi_country_t country;
     esp_ip4_addr_t sec_dns_server;
     wm_wifi_iface_t ap;
     wm_wifi_iface_t sta;
-    TaskHandle_t apTask_handle;
     TaskHandle_t scanTask_handle;
     esp_event_loop_handle_t uevent_loop;
     union {
@@ -64,7 +69,7 @@ typedef struct wm_airband_rank {
 static wm_wifi_mgr_config_t *wm_run_conf = NULL;
 
 static void vScanTask(void *pvParameters);
-static void vConnectTask(void *pvParameters);
+//static void vConnectTask(void *pvParameters);
 static void wm_wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
 static void wm_ip_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
 static void wm_apply_ap_driver_config();
@@ -78,6 +83,7 @@ static wm_ll_known_network_node_t *wm_find_known_net_by_ssid( char *ssid );
 static wm_ll_known_network_node_t *wm_find_known_net_by_id( uint32_t known_network_id );
 
 static void wm_restart_ap(void);
+
 
 /**
  * Change default ap channel
@@ -131,49 +137,37 @@ static void vScanTask(void *pvParameters)
                         xDelayTicks = (wm_run_conf->sta_connected) ? (5000 / portTICK_PERIOD_MS) : (2500 / portTICK_PERIOD_MS);
                     } else wm_restart_ap();
                 } 
-            } else { xDelayTicks = (1000 / portTICK_PERIOD_MS); } //Timeout 1 second or maybe greater???
+            } else { xDelayTicks = (1000 / portTICK_PERIOD_MS); }
         } else { xDelayTicks = (500 / portTICK_PERIOD_MS); }
         vTaskDelay(xDelayTicks);
     }
 }
 
-static void vConnectTask(void *pvParameters) { // Celiqt shiban task e izlishen
-    //esp_err_t err;
-    static char *tag = "vConnectTask";
-    while(1) {
-        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-        if(!wm_run_conf->sta_connecting && strlen((char *)wm_run_conf->found_known_ap.ssid)) {
-            wm_ll_known_network_node_t *net_conf = wm_find_known_net_by_ssid((char *)wm_run_conf->found_known_ap.ssid);
-            if(net_conf) {
-                strcpy((char *)wm_run_conf->sta.driver_config->sta.ssid, net_conf->payload.net_config.ssid);
-                strcpy((char *)wm_run_conf->sta.driver_config->sta.password, net_conf->payload.net_config.password);
-                wm_run_conf->sta.driver_config->sta.bssid_set = 1;
-                memcpy(wm_run_conf->sta.driver_config->sta.bssid, wm_run_conf->found_known_ap.bssid, 6);
-                wm_run_conf->sta.driver_config->sta.channel = wm_run_conf->found_known_ap.primary;
-                if( ESP_OK == esp_wifi_set_config(WIFI_IF_STA, wm_run_conf->sta.driver_config)) {
-                    wm_run_conf->sta_connecting = 1;
-                    wm_run_conf->sta_connect_retry = 0;
-                    esp_wifi_connect();
-                } else {
-                    /* Notification for failed connect */
-                }
-            }
-        }
-            /*while(!(xEventGroupGetBits(wm_config->event.group) & WIFIMGR_CONNECTING_BIT) && ( i < WIFIMGR_MAX_KNOWN_AP)) { 
-                if(strcmp((char *)wm_config->found_known_ap.ssid, wm_config->radio.known_networks[i].wifi_ssid) == 0) {
-                    strcpy((char *)wm_config->sta.driver_config->sta.ssid, wm_config->radio.known_networks[i].wifi_ssid);
-                    strcpy((char *)wm_config->sta.driver_config->sta.password, wm_config->radio.known_networks[i].wifi_password);
-                    wm_config->sta.driver_config->sta.channel = wm_config->found_known_ap.primary;
-                    if( ESP_OK = esp_wifi_set_config(WIFI_IF_STA, wm_config->sta.driver_config)) {
-                        xEventGroupSetBits(wm_config->event.group, WIFIMGR_CONNECTING_BIT);
-                        wm_config->event.sta_connect_retry = 0;
-                        esp_wifi_connect();
-                    }
-                }
-                i++;
-            }*/
-    }
-}
+
+//static void vConnectTask(void *pvParameters) { // Celiqt shiban task e izlishen
+//    //esp_err_t err;
+//    static char *tag = "vConnectTask";
+//    while(1) {
+//        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+//        if(!wm_run_conf->sta_connecting && strlen((char *)wm_run_conf->found_known_ap.ssid)) {
+//           wm_ll_known_network_node_t *net_conf = wm_find_known_net_by_ssid((char *)wm_run_conf->found_known_ap.ssid);
+//            if(net_conf) {
+//                strcpy((char *)wm_run_conf->sta.driver_config->sta.ssid, net_conf->payload.net_config.ssid);
+//               strcpy((char *)wm_run_conf->sta.driver_config->sta.password, net_conf->payload.net_config.password);
+//                wm_run_conf->sta.driver_config->sta.bssid_set = 1;
+//                memcpy(wm_run_conf->sta.driver_config->sta.bssid, wm_run_conf->found_known_ap.bssid, 6);
+//                wm_run_conf->sta.driver_config->sta.channel = wm_run_conf->found_known_ap.primary;
+//                if( ESP_OK == esp_wifi_set_config(WIFI_IF_STA, wm_run_conf->sta.driver_config)) {
+//                    wm_run_conf->sta_connecting = 1;
+//                    wm_run_conf->sta_connect_retry = 0;
+//                    esp_wifi_connect();
+//                } else {
+//                    /* Notification for failed connect */
+//                }
+//            }
+//        }
+//    }
+//}
 
 static void wm_wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
     if (event_base == WIFI_EVENT) {
@@ -244,7 +238,7 @@ static void wm_wifi_event_handler(void* arg, esp_event_base_t event_base, int32_
                 }
                 #if (CONFIG_WIFIMGR_AP_CHANNEL == 0)
                 if(wm_run_conf->ap_channel == 0) {
-                    int iRatedChannel = 0; //CONFIG_WIFIMGR_DEFAULT_AP_CHANNEL; //?????????
+                    int iRatedChannel = 0;
                     float fRatedRSSI = 0.0f, fCalcRSSI = 0.0f;
                     for(int i=0; i<13; i++) {
                         if(i==0) { fCalcRSSI = (float)(airband.channel[i] + airband.rssi[i]*10 + airband.channel[i+1] + airband.rssi[i+1]*10)/2; }
@@ -255,8 +249,6 @@ static void wm_wifi_event_handler(void* arg, esp_event_base_t event_base, int32_
                             iRatedChannel = i+1;
                         }
                     }
-                    /* da se proweri dali ne promenq standartnata konfiguraciq */
-                    ESP_LOGI("WIFI_EVENT_SCAN_DONE", "Found %u on channel %u, Rated %d", found_ap_count, wm_run_conf->scanned_channel, iRatedChannel);
                     if( wm_run_conf->ap.driver_config->ap.channel != iRatedChannel ) {
                         wm_run_conf->ap.driver_config->ap.channel = iRatedChannel;
                     };
@@ -344,6 +336,7 @@ static void wm_wifi_event_handler(void* arg, esp_event_base_t event_base, int32_
                 /* Destroy sntp */
                 esp_netif_sntp_deinit();
             #endif
+            ESP_LOGW("dis", "%u", ((wifi_event_sta_disconnected_t *)event_data)->reason);
             if (wm_run_conf->sta_connect_retry < wm_run_conf->max_sta_connect_retry) {
                 esp_wifi_connect();
                 wm_run_conf->sta_connect_retry++;

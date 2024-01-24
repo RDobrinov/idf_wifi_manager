@@ -33,26 +33,38 @@ typedef enum {
 
 ESP_EVENT_DECLARE_BASE(WM_EVENT);
 
+/**
+ * @brief Type of full IP configuration used for AP or STA mode
+*/
 typedef struct wm_net_ip_config {
-    esp_netif_ip_info_t static_ip;
-    esp_ip4_addr_t pri_dns_server;
+    esp_netif_ip_info_t static_ip;  /*!< Static IP config or IPADDR_ANY for DHCP */
+    esp_ip4_addr_t pri_dns_server;  /*!< Primary DNS server for AP or STA        */
 } wm_net_ip_config_t;
 
+/**
+ * @brief Type of Wireless network coniguration
+*/
 typedef struct wm_net_base_config {
-    char ssid[33];
-    char password[64];
-    wm_net_ip_config_t ip_config;
+    char ssid[33];                  /*!< WiFi SSID             */
+    char password[64];              /*!< WiFi Password         */
+    wm_net_ip_config_t ip_config;   /*!< Full IP configuration */
 } wm_net_base_config_t;
 
+/**
+ * @brief Type of Wireless AP
+*/
 typedef struct wm_apmode_config {
-    wm_net_base_config_t base_conf;
-    wifi_country_t country;
-    uint32_t ap_channel;
+    wm_net_base_config_t base_conf; /*!< Wireless IP and SSID Password config */
+    wifi_country_t country;         /*!< Wireless driver country configuration*/
+    uint32_t ap_channel;            /*!< Access point channel                 */
 } wm_apmode_config_t;
 
+/**
+ * @brief Type of single known network configuration 
+*/
 typedef struct wm_known_net_config {
-    wm_net_base_config_t net_config;
-    uint32_t net_config_id;
+    wm_net_base_config_t net_config;    /*!< Wireless network configuration   */
+    uint32_t net_config_id;             /*!< Configuration ID                 */
 } wm_known_net_config_t;
 
 //void wm_init_wifi_connection_data( wm_wifi_connection_data_t *pWifiConn );
