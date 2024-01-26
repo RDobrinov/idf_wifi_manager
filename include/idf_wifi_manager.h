@@ -1,9 +1,35 @@
+/*
+ * SPDX-FileCopyrightText: 2024 Rossen Dobrinov
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ * Copyright 2024 Rossen Dobrinov
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #ifndef _WIFI_MANAGER_H_
 #define _WIFI_MANAGER_H_
 
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/event_groups.h"
+#include "nvs_flash.h"
+#include "esp_wifi.h"
+#include "esp_event.h"
 #include "esp_system.h"
 
 #include "esp_netif.h"
@@ -11,12 +37,6 @@
 #include "esp_netif_types.h"
 #include "../lwip/esp_netif_lwip_internal.h"
 
-/* WiFi */
-#include "esp_wifi.h"
-#include "nvs_flash.h"
-#include "esp_event.h"
-#include "freertos/event_groups.h"
-/**/
 
 #define MACSTR "%X:%X:%X:%X:%X:%X"
 #define MAC2STR(macaddr)    ((uint8_t)macaddr[0]), ((uint8_t)macaddr[1]), ((uint8_t)macaddr[2]), \
@@ -67,20 +87,70 @@ typedef struct wm_known_net_config {
     uint32_t net_config_id;             /*!< Configuration ID                 */
 } wm_known_net_config_t;
 
-//void wm_init_wifi_connection_data( wm_wifi_connection_data_t *pWifiConn );
+/**
+ * Return code Interface functions
+*/
+
+/**
+ * @brief Initialize WiFi manager
+ * 
+ * @param[in] full_ap_cfg Pointer to full access point configuration. NULL for default 
+ * @param[in] p_uevent_loop Pointer to event loop handler for WiFi manager events
+ *                          NULL for default default event loop
+ * @return 
+ *  - ESP_OK Initialization successful
+ *  - ESP_FAIL General error
+ *  - ESP_ERR_NO_MEM No memory available
+ *  - Other - Refer to error codes in esp_err.h
+*/
+esp_err_t wm_init_wifi_manager( wm_apmode_config_t *full_ap_cfg, esp_event_loop_handle_t *p_uevent_loop);
+
+/**
+ * @brief Get list of active known networks for STA mode
+ *        Free returned pointer after usage to avoid memory leaks
+ * 
+ * @param[out] size Number of active known networks.
+ * @return 
+ *      - Pointer to wm_known_net_config_t array with known networks config data
+*/
+wm_known_net_config_t *wm_get_known_networks(size_t *size);
+
+/**
+ * @brief Add new known netowrk by SSID and Password
+ * 
+ * @param[in] ssid Pointer to NULL terminated string for network SSID
+ * @param[in] pwd Pointer to NULL terminated string for network SSID
+ * 
+ * @return 
+ *  - ESP_OK Succeed
+ *  - ESP_ERR_NO_MEM Out of memory
+ *  - ESP_ERR_INVALID_ARG Network SSID and/or PASSWORD do not meet criteria i.e. PASSWORD not empty and less than 8 characters
+ *  - ESP_ERR_NOT_ALLOWED MAX_KNOWN_NETWORKS reached
+*/
+esp_err_t wm_add_known_network( char *ssid, char *pwd );
+
+/**
+ * @brief Add known network with full configuration (i.e. Static IP, Custom DNS server address...)
+ * 
+ * @param[in] known_network Pointer to full Wireless network coniguration
+ * 
+ * @return 
+ *  - ESP_OK Succeed
+ *  - ESP_ERR_NO_MEM Out of memory
+ *  - ESP_ERR_INVALID_ARG Network SSID and/or PASSWORD do not meet criteria i.e. PASSWORD not empty and less than 8 characters
+ *  - ESP_ERR_NOT_ALLOWED MAX_KNOWN_NETWORKS reached
+*/
+esp_err_t wm_add_known_network_config( wm_net_base_config_t *known_network);
+
+
 void wm_create_apmode_config( wm_apmode_config_t *full_ap_cfg); //OK
 void wm_change_ap_mode_config( wm_net_base_config_t *ap_conf );
 void wm_set_ap_primary_dns(esp_ip4_addr_t dns_ip);  //OK
 void wm_set_sta_dns_by_id(esp_ip4_addr_t dns_ip, uint32_t known_network_id);
 void wm_set_sta_dns_by_ssid(esp_ip4_addr_t dns_ip, char *ssid);
 void wm_set_secondary_dns(esp_ip4_addr_t dns_ip);
-wm_known_net_config_t *wm_get_known_networks(size_t *size);                     //OK
 void wm_get_ap_config(wm_net_base_config_t *ap_conf);   //OK
-
-esp_err_t wm_set_interface_ip( wifi_interface_t iface, wm_net_ip_config_t *ip_info);   // *** Move to static 
-esp_err_t wm_init_wifi_manager( wm_apmode_config_t *full_ap_cfg, esp_event_loop_handle_t *p_uevent_loop);       //OK
-esp_err_t wm_add_known_network_config( wm_net_base_config_t *known_network);    //OK
-esp_err_t wm_add_known_network( char *ssid, char *pwd );    //OK
+ 
 esp_err_t wm_del_known_net_by_id( uint32_t known_network_id ); //OK
 esp_err_t wm_del_known_net_by_ssid( char *ssid );   //OK
 esp_err_t wm_set_country(char *cc); //or char (*cc)[3]
