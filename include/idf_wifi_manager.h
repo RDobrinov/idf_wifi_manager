@@ -42,13 +42,30 @@
 #define MAC2STR(macaddr)    ((uint8_t)macaddr[0]), ((uint8_t)macaddr[1]), ((uint8_t)macaddr[2]), \
                             ((uint8_t)macaddr[3]), ((uint8_t)macaddr[4]), ((uint8_t)macaddr[5]) 
 
-typedef enum {
-    WM_EVENT_AP_START,
-    WM_EVENT_AP_STOP,
-    WM_EVENT_STA_CONNECT,
-    WM_EVENT_STA_DISCONNECT,
-    WM_EVENT_NETIF_GOT_IP,
-    WM_EVENT_NETIF_GOT_TIME
+typedef enum wm_event_types {
+    WM_EVENT_AP_START,          /*!< Access point start */
+    WM_EVENT_AP_STOP,           /*!< Access point stop */
+    WM_EVENT_STA_CONNECT,       /*!< Station connect to AP */
+    WM_EVENT_STA_DISCONNECT,    /*!< Station disconnect from AP*/
+    WM_EVENT_GOT_IP,            /*!< Interface got IP */
+    WM_EVENT_GOT_TIME,          /*!< Time sync received from NTP */
+    WM_EVENT_SCAN_TASK_START,   /*!< Scanning task created */
+    /* Extended event notifications*/
+    WM_EVENT_STA_MODE_FAIL = 0x100, /*!< Switching to STA only mode failed*/
+    WM_EVENT_APSTA_MODE_FAIL,       /*!< Switchig to APSTA mode failed */
+    WM_EVENT_IP_SET_OK,             /*!< Successful IP change */
+    WM_EVENT_IP_SET_FAIL,           /*!< Unsuccessful IP change */
+    WM_EVENT_CC_SET_OK,             /*!< Successful country code change */
+    WM_EVENT_CC_SET_FAIL,           /*!< Unuccessful country code change */
+    WM_EVENT_KN_ADD_OK,             /*!< Known network added */
+    WM_EVENT_KN_ADD_NOMEM,          /*!< Known network add fail (no free memory)*/
+    WM_EVENT_KN_ADD_MAX_REACHED,    /*!< Known network add fail (MAX netowork count)*/
+    WM_EVENT_KN_DEL_OK,             /*!< Known network deleted */
+    WM_EVENT_KN_DEL_FAIL,           /*!< Known network delete failed */
+    WM_EVENT_BL_ADD_OK,             /*!< AP added to blacklist */
+    WM_EVENT_BL_DEL_OK,             /*!< AP removed from blacklist */
+    WM_EVENT_DNS_CHANGE_FAIL,       /*!< DNS address not changed */
+    WM_EVENT_EVENT_TYPE_MAX         /*!< MAX EVENT */
 } wm_event_t;
 
 ESP_EVENT_DECLARE_BASE(WM_EVENT);
@@ -88,7 +105,7 @@ typedef struct wm_known_net_config {
 } wm_known_net_config_t;
 
 /**
- * Return code Interface functions
+ * Control Interface functions
 */
 
 /**
@@ -104,16 +121,6 @@ typedef struct wm_known_net_config {
  *  - Other - Refer to error codes in esp_err.h
 */
 esp_err_t wm_init_wifi_manager( wm_apmode_config_t *full_ap_cfg, esp_event_loop_handle_t *p_uevent_loop);
-
-/**
- * @brief Get list of active known networks for STA mode
- *        Free returned pointer after usage to avoid memory leaks
- * 
- * @param[out] size Number of active known networks.
- * @return 
- *      - Pointer to wm_known_net_config_t array with known networks config data
-*/
-wm_known_net_config_t *wm_get_known_networks(size_t *size);
 
 /**
  * @brief Add new known netowrk by SSID and Password
@@ -142,23 +149,135 @@ esp_err_t wm_add_known_network( char *ssid, char *pwd );
 */
 esp_err_t wm_add_known_network_config( wm_net_base_config_t *known_network);
 
+/**
+ * @brief Set WiFi country code 
+ * 
+ * @param[in] cc Pointer to NULL terminated string for country code
+ * 
+ * @return
+*/
+void wm_set_country(char *cc);
 
-void wm_create_apmode_config( wm_apmode_config_t *full_ap_cfg); //OK
+/**
+ * @brief Change AP mode configuration 
+ * 
+ * @param[in] ap_conf Pointer to full Wireless network configuration
+ * 
+ * @return
+*/
 void wm_change_ap_mode_config( wm_net_base_config_t *ap_conf );
-void wm_set_ap_primary_dns(esp_ip4_addr_t dns_ip);  //OK
+
+/**
+ * @brief Set Primary DNS server address in AP mode. 
+ * 
+ * @param[in] ap_conf Pointer to full Wireless network configuration
+ * 
+ * @return
+*/
+/*void wm_set_ap_primary_dns(esp_ip4_addr_t dns_ip);*/
+
+/**
+ * @brief Set DNS server address for known netowork id.
+ * 
+ * @param[in] dns_ip DNS server address
+ * @param[in] known_network_id Internal network ID
+ * 
+ * @return
+*/
 void wm_set_sta_dns_by_id(esp_ip4_addr_t dns_ip, uint32_t known_network_id);
+
+/**
+ * @brief Set DNS server address for known netowork ssid.
+ * 
+ * @param[in] dns_ip DNS server address
+ * @param[in] ssid Network SSID as NULL terminated string
+ * 
+ * @return
+*/
 void wm_set_sta_dns_by_ssid(esp_ip4_addr_t dns_ip, char *ssid);
+
+/**
+ * @brief Set secondary DNS server address. *** Read the docs. ***
+ * 
+ * @param[in] dns_ip DNS server address
+ * 
+ * @return
+*/
 void wm_set_secondary_dns(esp_ip4_addr_t dns_ip);
-void wm_get_ap_config(wm_net_base_config_t *ap_conf);   //OK
- 
-esp_err_t wm_del_known_net_by_id( uint32_t known_network_id ); //OK
-esp_err_t wm_del_known_net_by_ssid( char *ssid );   //OK
-esp_err_t wm_set_country(char *cc); //or char (*cc)[3]
 
-uint8_t wm_netmask_to_cidr(uint32_t nm);    //OK
+/**
+ * @brief Remove known netowork by id.
+ * 
+ * @param[in] known_network_id Internal network ID
+ * 
+ * @return
+*/
+void wm_del_known_net_by_id( uint32_t known_network_id );
 
+/**
+ * @brief Remove known netowork by SSID
+ * 
+ * @param[in] ssid Network SSID as NULL terminated string
+ * 
+ * @return
+*/
+void wm_del_known_net_by_ssid( char *ssid );
 
-uint32_t wm_get_config_id(char *ssid);      //OK
+/**
+ * Info API functions
+*/
+
+/**
+ * @brief Get list of active known networks for STA mode
+ *        Free returned pointer after usage to avoid memory leaks
+ * 
+ * @param[out] size Number of active known networks.
+ * @return 
+ *      - Pointer to wm_known_net_config_t array with known networks config data
+*/
+wm_known_net_config_t *wm_get_known_networks(size_t *size);
+
+/**
+ * @brief Get wireless configuration of current AP mode internal settings
+ * 
+ * @param[out] ap_conf Full Wireless configuration
+ * 
+ * @return
+*/
+void wm_get_ap_config(wm_net_base_config_t *ap_conf);
+
+/**
+ * @brief Get internal ID for known network SSID
+ * 
+ * @param[in] ssid Network SSID as NULL terminated string
+ * 
+ * @return
+ *      - Known network internal ID. 0 means Known network not found
+*/
+uint32_t wm_get_kn_config_id(char *ssid);
+
+/**
+ * Helper functions
+*/
+
+/**
+ * @brief Get wireless configuration of current AP mode internal settings
+ * 
+ * @param[out] full_ap_cfg Variable to fill with default values for AP configuration
+ * 
+ * @return
+*/
+void wm_create_apmode_config( wm_apmode_config_t *full_ap_cfg);
+
+/**
+ * @brief Get internal ID for known network SSID
+ * 
+ * @param[in] nm 32 bit value of subnet netmask
+ * @return 
+ *      - Classless Inter-Domain Routing Prefix
+*/
+uint8_t wm_netmask_to_cidr(uint32_t nm);
+
 
 /**
  * For test Only
