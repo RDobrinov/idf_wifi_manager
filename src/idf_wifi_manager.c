@@ -91,6 +91,7 @@ typedef struct wm_wifi_mgr_config {
     esp_ip4_addr_t sec_dns_server;                      /*!< Secondary DNS IPv4 Address                           */
     wm_wifi_iface_t ap;                                 /*!< AP mode interface and driver configuration           */
     wm_wifi_iface_t sta;                                /*!< STA mode interface and driver configuration          */
+    SemaphoreHandle_t kn_Semaphore;                     /*!< Known network list semaphore                         */
     TaskHandle_t scanTask_handle;                       /*!< Scan task handle ( Not Used)                         */
     esp_event_loop_handle_t uevent_loop;                /*!< User event loop handler for event notification       */
     union {
@@ -489,7 +490,8 @@ esp_err_t wm_init_wifi_manager( wm_apmode_config_t *full_ap_cfg, esp_event_loop_
             wm_event_post(WM_EVENT_GOT_IP, event_data, sizeof(esp_netif_ip_info_t));
             free(event_data);
         };
-
+        wm_run_conf->kn_Semaphore = xSemaphoreCreateBinary();
+        xSemaphoreGive(wm_run_conf->kn_Semaphore);
         wm_run_conf->scanning = 1;
         xTaskCreate(vScanTask, "wscan", 2048, NULL, 15, &wm_run_conf->scanTask_handle);
     } else return ESP_ERR_NO_MEM;
@@ -577,14 +579,17 @@ void wm_del_known_net_by_id( uint32_t known_network_id ) {
     while( !for_delete && work) {
         for_delete = (known_network_id == work->payload.net_config_id);
         if(for_delete) {
-            if(!prev) wm_run_conf->known_networks_head = work->next; //head node going to be deleted
-            else prev->next = work->next;
-            /* Free SSID and Password and release node */
-            wm_event_post(WM_EVENT_KN_DEL_OK, &(work->payload.net_config_id), sizeof(int32_t));
-            free(work->payload.net_config.ssid);
-            free(work->payload.net_config.password);
-            free(work);
-            (wm_run_conf->known_net_count)--;
+            if(xSemaphoreTake(wm_run_conf->kn_Semaphore, (TickType_t) 1) == pdTRUE) {
+                if(!prev) wm_run_conf->known_networks_head = work->next; //head node going to be deleted
+                else prev->next = work->next;
+                (wm_run_conf->known_net_count)--;
+                xSemaphoreGive(wm_run_conf->kn_Semaphore);
+                /* Free SSID and Password and release node */
+                wm_event_post(WM_EVENT_KN_DEL_OK, &(work->payload.net_config_id), sizeof(uint32_t));
+                free(work->payload.net_config.ssid);
+                free(work->payload.net_config.password);
+                free(work);
+            } else wm_event_post(WM_EVENT_KN_DEL_FAIL, &(work->payload.net_config_id), sizeof(uint32_t));
         } else {
             prev = work;
             work = work->next;
@@ -598,7 +603,6 @@ void wm_del_known_net_by_ssid( char *ssid ) {
     if(!wm_run_conf) return;    /* Safety check */
     wm_del_known_net_by_id(wm_get_kn_config_id(ssid));
     return;
-    //return wm_del_known_net_by_id(wm_get_config_id(ssid));
 }
 
 wm_known_net_config_t *wm_get_known_networks(size_t *size) {
@@ -757,21 +761,25 @@ static void wm_wifi_event_handler(void* arg, esp_event_base_t event_base, int32_
                 if(!(wm_run_conf->sta_connected)) {
                     if(strlen((char *)wm_run_conf->found_known_ap.ssid) > 0 ) {
                         if(!wm_run_conf->sta_connecting) {
-                            wm_ll_known_network_node_t *net_conf = wm_find_known_net_by_ssid((char *)wm_run_conf->found_known_ap.ssid);
-                            if(net_conf) {
-                                strcpy((char *)wm_run_conf->sta.driver_config->sta.ssid, net_conf->payload.net_config.ssid);
-                                strcpy((char *)wm_run_conf->sta.driver_config->sta.password, net_conf->payload.net_config.password);
-                                wm_run_conf->sta.driver_config->sta.bssid_set = 1;
-                                memcpy(wm_run_conf->sta.driver_config->sta.bssid, wm_run_conf->found_known_ap.bssid, 6);
-                                wm_run_conf->sta.driver_config->sta.channel = wm_run_conf->found_known_ap.primary;
-                                if( ESP_OK == esp_wifi_set_config(WIFI_IF_STA, wm_run_conf->sta.driver_config)) {
-                                    wm_run_conf->sta_connecting = 1;
-                                    wm_run_conf->sta_connect_retry = 0;
-                                    esp_wifi_connect();
-                                } else {
-                                    /* Notification for failed connect */
-                                    wm_event_post(WM_EVENT_STA_MODE_FAIL, NULL, 0);
-                                }
+                            /* Take semaphore to have safety pointer to known network */
+                            if(xSemaphoreTake(wm_run_conf->kn_Semaphore, (TickType_t) 1) == pdTRUE) {
+                                wm_ll_known_network_node_t *net_conf = wm_find_known_net_by_ssid((char *)wm_run_conf->found_known_ap.ssid);
+                                if(net_conf) {
+                                    strcpy((char *)wm_run_conf->sta.driver_config->sta.ssid, net_conf->payload.net_config.ssid);
+                                    strcpy((char *)wm_run_conf->sta.driver_config->sta.password, net_conf->payload.net_config.password);
+                                    xSemaphoreGive(wm_run_conf->kn_Semaphore);
+                                    wm_run_conf->sta.driver_config->sta.bssid_set = 1;
+                                    memcpy(wm_run_conf->sta.driver_config->sta.bssid, wm_run_conf->found_known_ap.bssid, 6);
+                                    wm_run_conf->sta.driver_config->sta.channel = wm_run_conf->found_known_ap.primary;
+                                    if( ESP_OK == esp_wifi_set_config(WIFI_IF_STA, wm_run_conf->sta.driver_config)) {
+                                        wm_run_conf->sta_connecting = 1;
+                                        wm_run_conf->sta_connect_retry = 0;
+                                        esp_wifi_connect();
+                                    } else {
+                                        /* Notification for failed connect */
+                                        wm_event_post(WM_EVENT_STA_MODE_FAIL, NULL, 0);
+                                    }
+                                } else xSemaphoreGive(wm_run_conf->kn_Semaphore);
                             }
                         }
                     } else {
@@ -923,25 +931,28 @@ static esp_err_t wm_add_known_network_node( wm_wifi_base_config_t *known_network
     }
     wm_ll_known_network_node_t *work = calloc(1, sizeof(wm_ll_known_network_node_t));
     if(work) {
-        work->payload.net_config = *known_network;
-        work->payload.net_config_id = esp_rom_crc32_le(0, (const unsigned char *)known_network->ssid, strlen(known_network->ssid));
-        wm_del_blist_bssid(work->payload.net_config_id);
-        work->payload.net_config_id = esp_rom_crc32_le(work->payload.net_config_id, (const unsigned char *)known_network->password, strlen(known_network->password));
-        if(wm_find_known_net_by_id(work->payload.net_config_id)) wm_del_known_net_by_id(work->payload.net_config_id); /* Prevents false event flood */
-        /* Semaphore */
-        work->next = wm_run_conf->known_networks_head;
-        wm_run_conf->known_networks_head = work;
-        (wm_run_conf->known_net_count)++;
-        /* release */
-        wm_event_post(WM_EVENT_KN_ADD_OK, &(work->payload.net_config_id), sizeof(uint32_t));
-        return ESP_OK;
+        if(xSemaphoreTake(wm_run_conf->kn_Semaphore, (TickType_t) 1) == pdTRUE) {
+            work->payload.net_config = *known_network;
+            work->payload.net_config_id = esp_rom_crc32_le(0, (const unsigned char *)known_network->ssid, strlen(known_network->ssid));
+            wm_del_blist_bssid(work->payload.net_config_id);
+            work->payload.net_config_id = esp_rom_crc32_le(work->payload.net_config_id, (const unsigned char *)known_network->password, strlen(known_network->password));
+            if(wm_find_known_net_by_id(work->payload.net_config_id)) wm_del_known_net_by_id(work->payload.net_config_id); /* Prevents false event flood */
+            /* Semaphore */
+            work->next = wm_run_conf->known_networks_head;
+            wm_run_conf->known_networks_head = work;
+            (wm_run_conf->known_net_count)++;
+            /* release */
+            xSemaphoreGive(wm_run_conf->kn_Semaphore);
+            wm_event_post(WM_EVENT_KN_ADD_OK, &(work->payload.net_config_id), sizeof(uint32_t));
+            return ESP_OK;
+        } else free(work);
     }
     wm_event_post(WM_EVENT_KN_ADD_NOMEM, NULL, 0);
     return ESP_ERR_NO_MEM;
 }
 
 /**
- * Blacklist opperating functions
+ * Blacklist operating functions
 */
 
 static void wm_add_blist_bssid(wm_blist_data_t *bssid) {
