@@ -2,7 +2,11 @@
 
 Easy IDF WiFi connection manager component for ESP IDF. It has been tested with the ESP32, ESP32-S3, and ESP32-C6 boards.
 
-![Static Badge](https://img.shields.io/badge/any_text-you_like-blue?logo=espressif) ![Dynamic YAML Badge](https://img.shields.io/badge/dynamic/yaml?url=https://raw.githubusercontent.com/RDobrinov/idf_wifi_manager/dev-events/idf_component.yml&query=$.verison&label=Ver)
+![](https://img.shields.io/badge/dynamic/yaml?url=https://raw.githubusercontent.com/RDobrinov/idf_wifi_manager/main/idf_component.yml&query=$.version&style=plastic&color=%230f900f&label)
+![](https://img.shields.io/badge/dynamic/yaml?url=https://raw.githubusercontent.com/RDobrinov/idf_wifi_manager/main/idf_component.yml&query=$.dependencies.idf&style=plastic&logo=espressif&label=IDF%20Ver.)
+![](https://img.shields.io/badge/-ESP32-rgb(37,194,160)?style=plastic&logo=espressif)
+![](https://img.shields.io/badge/-ESP32--S3-rgb(37,194,160)?style=plastic&logo=espressif)
+![](https://img.shields.io/badge/-ESP32--C6-rgb(37,194,160)?style=plastic&logo=espressif)
 
 ---
 
