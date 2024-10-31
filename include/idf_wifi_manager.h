@@ -65,6 +65,8 @@ typedef enum wm_event_types {
     WM_EVENT_BL_ADD_OK,             /*!< AP added to blacklist */
     WM_EVENT_BL_DEL_OK,             /*!< AP removed from blacklist */
     WM_EVENT_DNS_CHANGE_FAIL,       /*!< DNS address not changed */
+    WM_EVENT_AP_STA_CONNECTED,      /*!< Station connected to softAP */
+    WM_EVENT_AP_STA_DISCONNECTED,   /*!< Station disconnected from softAP */
     WM_EVENT_EVENT_TYPE_MAX         /*!< MAX EVENT */
 } wm_event_t;
 
