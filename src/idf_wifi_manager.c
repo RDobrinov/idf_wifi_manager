@@ -26,6 +26,8 @@
 #include "esp_rom_crc.h"
 #include "sdkconfig.h"
 
+#include "esp_log.h"
+
 /**
  * @brief Type of Wireless AP/STA interface coniguration
 */
@@ -106,7 +108,8 @@ typedef struct wm_wifi_mgr_config {
             uint32_t ap_channel:4;              /*!< Configured AP channel      */
             uint32_t scanned_channel:4;         /*!< Number of scanned channel  */
             uint32_t blacklist_reason:1;        /*!< Blacklist reason flag      */
-            uint32_t reserved_8:8;              /*!< Reserved                   */
+            uint32_t station_connected_to_ap:1; /*!< Flag. Station connected    */
+            uint32_t reserved_7:7;              /*!< Reserved                   */
         };
         uint32_t state;                         /*!< State wrapper              */
     }; 
@@ -849,6 +852,16 @@ static void wm_wifi_event_handler(void* arg, esp_event_base_t event_base, int32_
                 wm_run_conf->blacklist_reason = 0;
             }
         }
+        /* Control station connected to softAP */
+        if (event_id == WIFI_EVENT_AP_STACONNECTED) {
+            wm_run_conf->station_connected_to_ap = 1;
+            wm_event_post(WM_EVENT_AP_STA_CONNECTED, event_data, sizeof(wifi_event_ap_staconnected_t));
+        }
+
+        if (event_id == WIFI_EVENT_AP_STADISCONNECTED) {
+            wm_run_conf->station_connected_to_ap = 0;
+            wm_event_post(WM_EVENT_AP_STA_DISCONNECTED, event_data, sizeof(wifi_event_ap_stadisconnected_t));
+        }
     }
 }
 
@@ -1137,17 +1150,19 @@ static void vScanTask(void *pvParameters)
     wm_event_post(WM_EVENT_SCAN_TASK_START, NULL, 0);
     wifi_mode_t wifi_run_mode = WIFI_MODE_MAX;
     TickType_t xDelayTicks = (2500 / portTICK_PERIOD_MS);
-    wifi_scan_config_t cfg = {NULL, NULL, 0, true, WIFI_SCAN_TYPE_ACTIVE, (wifi_scan_time_t){{0, 120}, 320}, 255};
+    wifi_scan_config_t cfg = {NULL, NULL, 0, true, WIFI_SCAN_TYPE_ACTIVE, (wifi_scan_time_t){{0, 120}, 320}, 255, (wifi_scan_channel_bitmap_t){0x3FFF, 0UL}};
     while(true) {
         if(esp_wifi_get_mode(&wifi_run_mode) == ESP_OK) {
-            if((wm_run_conf->sta_connect_retry >= wm_run_conf->max_sta_connect_retry) || (wifi_run_mode == WIFI_MODE_APSTA) || ((wifi_run_mode == WIFI_MODE_STA) && (wm_run_conf->sta_connected))) {    
+            if((wm_run_conf->sta_connect_retry >= wm_run_conf->max_sta_connect_retry) || (wifi_run_mode == WIFI_MODE_APSTA) || ((wifi_run_mode == WIFI_MODE_STA) && (wm_run_conf->sta_connected))) {
                 if ( !(wm_run_conf->sta_connecting) && (wm_run_conf->scanning) ) {
                     if(wm_run_conf->known_networks_head) {
-                        wm_run_conf->scanning = 0;
+                        wm_run_conf->scanning = wm_run_conf->station_connected_to_ap; // Reenable scan mode if station is connected to AP
                         if(!(wm_run_conf->sta_connected)) {
-                            cfg.channel = 0;
-                            wm_run_conf->scanned_channel = 0;
-                            esp_wifi_scan_start(&cfg, false);
+                            if(!(wm_run_conf->station_connected_to_ap)) {
+                                cfg.channel = 0;
+                                wm_run_conf->scanned_channel = 0;
+                                esp_wifi_scan_start(&cfg, false);
+                            }
                         } 
                         #if (CONFIG_WIFIMGR_AP_CHANNEL == 0)
                         else {
