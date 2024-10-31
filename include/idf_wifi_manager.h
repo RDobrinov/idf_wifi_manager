@@ -20,6 +20,8 @@
  * limitations under the License.
  */
 
+/* Test line for code signing */
+
 #ifndef _WIFI_MANAGER_H_
 #define _WIFI_MANAGER_H_
 
