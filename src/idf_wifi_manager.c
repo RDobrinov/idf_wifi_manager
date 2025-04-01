@@ -1150,7 +1150,7 @@ static void vScanTask(void *pvParameters)
     wm_event_post(WM_EVENT_SCAN_TASK_START, NULL, 0);
     wifi_mode_t wifi_run_mode = WIFI_MODE_MAX;
     TickType_t xDelayTicks = (2500 / portTICK_PERIOD_MS);
-    wifi_scan_config_t cfg = {NULL, NULL, 0, true, WIFI_SCAN_TYPE_ACTIVE, (wifi_scan_time_t){{0, 120}, 320}, 255, (wifi_scan_channel_bitmap_t){0x3FFF, 0UL}};
+    wifi_scan_config_t cfg = {NULL, NULL, 0, true, WIFI_SCAN_TYPE_ACTIVE, (wifi_scan_time_t){{0, 120}, 320}, 255, (wifi_scan_channel_bitmap_t){0UL, 0UL}};
     while(true) {
         if(esp_wifi_get_mode(&wifi_run_mode) == ESP_OK) {
             if((wm_run_conf->sta_connect_retry >= wm_run_conf->max_sta_connect_retry) || (wifi_run_mode == WIFI_MODE_APSTA) || ((wifi_run_mode == WIFI_MODE_STA) && (wm_run_conf->sta_connected))) {
