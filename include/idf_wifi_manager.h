@@ -93,9 +93,10 @@ typedef struct wm_net_base_config {
  * @brief Type of Wireless AP
 */
 typedef struct wm_apmode_config {
-    wm_net_base_config_t base_conf; /*!< Wireless IP and SSID Password config */
-    wifi_country_t country;         /*!< Wireless driver country configuration*/
-    uint32_t ap_channel;            /*!< Access point channel                 */
+    wm_net_base_config_t base_conf; /*!< Wireless IP and SSID Password config  */
+    wifi_country_t country;         /*!< Wireless driver country configuration */
+    char hostname[32];              /*!< Station hostname */
+    uint32_t ap_channel;            /*!< Access point channel                  */
 } wm_apmode_config_t;
 
 /**
@@ -122,7 +123,7 @@ typedef struct wm_known_net_config {
  *  - ESP_ERR_NO_MEM No memory available
  *  - Other - Refer to error codes in esp_err.h
 */
-esp_err_t wm_init_wifi_manager( wm_apmode_config_t *full_ap_cfg, esp_event_loop_handle_t *p_uevent_loop);
+esp_err_t wm_init_wifi_manager(wm_apmode_config_t *full_ap_cfg, esp_event_loop_handle_t *p_uevent_loop);
 
 /**
  * @brief Add new known netowrk by SSID and Password
@@ -177,6 +178,16 @@ void wm_change_ap_mode_config( wm_net_base_config_t *ap_conf );
  * @return
 */
 /*void wm_set_ap_primary_dns(esp_ip4_addr_t dns_ip);*/
+
+/**
+ * @brief Set AP mode configuration to internal wifi_config_t holder
+ * 
+ * @param[in] hostname Hostname null terminated string (max 32 chars)
+ * 
+ * @return 
+ * 
+*/
+void wm_set_sta_hostname(const char *hostname);
 
 /**
  * @brief Set DNS server address for known netowork id.

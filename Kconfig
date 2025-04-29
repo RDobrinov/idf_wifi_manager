@@ -48,6 +48,12 @@ menu "WIFI Manager"
     default ""
     help
         Default password for mode
+
+    config WIFIMGR_HOSTNAME
+        string "Device hostname"
+        default "esp-host"
+        help
+            Default hostname
     
     choice  WIFIMGR_COUNTRY_CODE
         prompt "WiFi country code"

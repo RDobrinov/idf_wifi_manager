@@ -90,6 +90,7 @@ typedef struct wm_wifi_mgr_config {
     wm_ll_blacklist_node_t *blacklist_head;             /*!< Pointer to first node for blacklisted AP linked list */
     wm_net_base_config_t ap_conf;                       /*!< Access point mode WiFi configuration holder          */
     wifi_country_t country;                             /*!< Wireless Country Code information holder             */
+    char hostname[32];                                  /*!< Netif host name */
     esp_ip4_addr_t sec_dns_server;                      /*!< Secondary DNS IPv4 Address                           */
     wm_wifi_iface_t ap;                                 /*!< AP mode interface and driver configuration           */
     wm_wifi_iface_t sta;                                /*!< STA mode interface and driver configuration          */
@@ -392,6 +393,7 @@ esp_err_t wm_init_wifi_manager( wm_apmode_config_t *full_ap_cfg, esp_event_loop_
         }
 
         /* Apply ap configuration - passed or default */
+        wm_set_sta_hostname(CONFIG_WIFIMGR_HOSTNAME);
         if(!full_ap_cfg) {
             wm_run_conf->ap_conf = (wm_net_base_config_t) {
                 .ssid = CONFIG_WIFIMGR_AP_SSID,
@@ -412,8 +414,9 @@ esp_err_t wm_init_wifi_manager( wm_apmode_config_t *full_ap_cfg, esp_event_loop_
             wm_run_conf->ap_conf = full_ap_cfg->base_conf;
             wm_run_conf->ap_channel = full_ap_cfg->ap_channel;
             wm_run_conf->country = full_ap_cfg->country;
+            wm_set_sta_hostname(full_ap_cfg->hostname);
         }
-
+        /** Set hostname */
         if(wm_run_conf->ap_channel)
             if(((0 == strcmp(CONFIG_WIFIMGR_COUNTRY_CODE, "US")) || (0 == strcmp(CONFIG_WIFIMGR_COUNTRY_CODE, "01"))) && wm_run_conf->ap_channel >11 ) wm_run_conf->ap_channel = 11;
 
@@ -1133,6 +1136,13 @@ static void wm_restart_ap(void) {
     }
     free(wifi_run_mode);
     return;
+}
+
+void wm_set_sta_hostname(const char *hostname) {
+    if(!hostname) return;
+    memset(wm_run_conf->hostname, 0x00, sizeof(wm_run_conf->hostname));
+    memcpy(wm_run_conf->hostname, hostname, sizeof(wm_run_conf->hostname)-1);
+    esp_netif_set_hostname(wm_run_conf->sta.iface, wm_run_conf->hostname);
 }
 
 /**
