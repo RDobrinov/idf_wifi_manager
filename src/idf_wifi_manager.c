@@ -528,18 +528,25 @@ esp_err_t wm_add_known_network_config( wm_net_base_config_t *known_network) {
 
 void wm_set_country(char *cc) {
     if(!wm_run_conf) return;    /* Safety check */
-    wifi_country_t *new_country = (wifi_country_t *)calloc(1, sizeof(wifi_country_t));
+    wifi_country_t new_country = (wifi_country_t ){
+        .cc = "",
+        .schan = 1,
+        .nchan = ((0 == strcmp(cc, "US")) || (0 == strcmp(cc, "01")) )? 11 : 13,
+        .policy=WIFI_COUNTRY_POLICY_AUTO
+    };
+    /*wifi_country_t *new_country = (wifi_country_t *)calloc(1, sizeof(wifi_country_t));
     *new_country = (wifi_country_t ){
         .cc = "",
         .schan = 1,
         .nchan = ((0 == strcmp(cc, "US")) || (0 == strcmp(cc, "01")) )? 11 : 13,
         .policy=WIFI_COUNTRY_POLICY_AUTO
     };
-    new_country->cc[0] = cc[0];
-    new_country->cc[1] = cc[1];
-    memcpy(&wm_run_conf->country, new_country, sizeof(wifi_country_t));
-    free(new_country);
-    return;
+    */
+    new_country.cc[0] = cc[0];
+    new_country.cc[1] = cc[1];
+    memcpy(&wm_run_conf->country, &new_country, sizeof(wifi_country_t));
+    //free(new_country);
+    //return;
     wm_event_post((esp_wifi_set_country(&(wm_run_conf->country)) == ESP_OK ) ? WM_EVENT_CC_SET_OK : WM_EVENT_CC_SET_FAIL, NULL, 0);
 }
 
@@ -1112,7 +1119,22 @@ void wm_set_interface_ip( wifi_interface_t iface, wm_net_ip_config_t *ip_info)
     return;
 }
 
-static void wm_clear_pointers(void) {
+static void wm_clear_pointers(void) {   //Няма проверка за linked lists, но на практика тя се извиква само при грешка в инициализацията
+    /* wm_ll_known_network_node_t *kn = wm_run_conf->known_networks_head;
+    while (kn) {
+        wm_ll_known_network_node_t *next = kn->next;
+        free(kn->payload.net_config.ssid);
+        free(kn->payload.net_config.password);
+        free(kn);
+        kn = next;
+    }
+    // Освободи blacklist_head
+    wm_ll_blacklist_node_t *bl = wm_run_conf->blacklist_head;
+    while (bl) {
+        wm_ll_blacklist_node_t *next = bl->next;
+        free(bl);
+        bl = next;
+    } */
     if(wm_run_conf->ap.driver_config) free(wm_run_conf->ap.driver_config);
     if(wm_run_conf->sta.driver_config) free(wm_run_conf->sta.driver_config);
     free(wm_run_conf);
@@ -1120,7 +1142,7 @@ static void wm_clear_pointers(void) {
 
 static esp_err_t wm_check_ssid_pwd(char *ssid, char *pwd) {
     size_t pwd_length = strlen(pwd);
-    return ((strlen(ssid) < 2) || ( pwd_length>0 && pwd_length<8));
+    return ((strlen(ssid) < 2) || ( pwd_length>0 && pwd_length<8)); //Incorrect esp_err_t
 }
 
 static void wm_restart_ap(void) {
